@@ -1,0 +1,39 @@
+# ── Python ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ── Virtual environment ───────────────────────────────
+venv/
+.venv/
+
+# ── Environment / secrets ─────────────────────────────
+.env
+
+# ── Data (regenerable from raw source, too large for git) ─
+data/raw/*
+data/interim/*
+data/processed/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+
+# ── Trained model artifacts (regenerable via training scripts) ─
+models/*.joblib
+!models/.gitkeep
+
+# ── Notebooks ──────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── IDE / editor ───────────────────────────────────────
+.vscode/
+.idea/
+
+# ── OS ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs ───────────────────────────────────────────────
+*.log

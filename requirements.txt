@@ -1,0 +1,27 @@
+# Core data manipulation
+pandas==3.0.4
+numpy>=2.0,<3.0
+
+# Machine learning 
+scikit-learn==1.9.0
+xgboost==3.2.0
+
+# Visualization
+matplotlib>=3.9,<4.0
+plotly>=5.24,<6.0
+
+# Model persistence
+joblib>=1.4,<2.0
+
+# Geospatial feature engineering
+geopy>=2.4,<3.0
+
+# Configuration
+PyYAML>=6.0,<7.0
+
+# API layer
+fastapi==0.139.2
+uvicorn[standard]>=0.34,<1.0
+
+# Testing
+pytest>=8.3,<9.0
