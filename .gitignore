@@ -21,7 +21,7 @@ data/processed/*
 !data/processed/.gitkeep
 
 # ── Trained model artifacts (regenerable via training scripts) ─
-models/*.joblib
+**/*.joblib
 !models/.gitkeep
 
 # ── Notebooks ──────────────────────────────────────────

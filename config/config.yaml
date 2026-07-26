@@ -1,0 +1,93 @@
+# ============================================================
+# Ride-Hailing ML Project — Central Configuration
+# Single source of truth for paths, thresholds, and hyperparameters.
+# Change values here, not inside pipeline code.
+# ============================================================
+
+project:
+  name: ride-hailing-ml
+  random_seed: 42          # used everywhere a model or split needs determinism
+
+paths:
+  raw_data: data/raw/train.csv
+  interim_dir: data/interim
+  processed_dir: data/processed
+  models_dir: models
+  reports_dir: reports/figures
+
+# ── Raw schema + basic sanity bounds (used in Phase 4 cleaning) ──
+data:
+  target_column: trip_duration
+  id_column: id
+  datetime_columns:
+    - pickup_datetime
+    - dropoff_datetime
+  test_size: 0.2                     # held out for final evaluation, all pipelines
+  max_passenger_count: 6   # generous upper bound; legal NYC taxi capacity is 4-6 depending on vehicle
+
+  # Trips outside these bounds are almost certainly GPS/meter errors,
+  # not just unusual — used as a coarse pre-filter before the Isolation
+  # Forest ever sees the data (Phase 11 handles the subtler cases).
+  min_trip_duration_seconds: 10
+  max_trip_duration_seconds: 86400   # 24 hours
+
+  # NYC bounding box — anything outside this is a bad GPS fix, not a real trip
+  nyc_lat_bounds: [40.4, 41.0]
+  nyc_lon_bounds: [-74.3, -73.6]
+
+
+  # ── Temporal feature engineering (Phase 5) ──
+temporal_features:
+  rush_hour_morning: [7, 10]   # inclusive hour range, 24h clock
+  rush_hour_evening: [16, 19]  # inclusive hour range, 24h clock
+
+# ── Pickup zone clustering (Phase 6) ──
+zones:
+  n_clusters: 30
+  random_state: 42
+
+# ── Hourly demand dataset construction (Phase 7) ──
+demand_forecast:
+  lag_hours: [1, 2, 3, 24]      # e.g. demand 1hr ago, 24hr ago (same time yesterday)
+  rolling_windows: [3, 6, 24]   # rolling mean windows, in hours
+
+# ── Trip duration models (Phase 8-9) ──
+duration_model:
+  test_size: 0.2
+  cv_folds: 5
+
+
+# ── Stacking ensemble (Phase 9) ──
+# n_estimators/max_depth here are intentionally lower than the
+# standalone tree models in duration_model - stacking's internal
+# cross-validation multiplies training cost by ~(cv_folds + 1), so
+# these are trimmed to keep total training time reasonable.
+stacking:
+  cv_folds: 3
+  random_forest_n_estimators: 150
+  random_forest_max_depth: 14
+  extra_trees_n_estimators: 150
+  extra_trees_max_depth: 14
+  xgboost_n_estimators: 200
+  xgboost_max_depth: 7
+  xgboost_learning_rate: 0.1
+
+
+# ── Demand forecasting models (Phase 10) ──
+demand_model:
+  test_size: 0.2   # fraction of the TIME RANGE held out - NOT a random row fraction
+  random_forest_n_estimators: 200
+  random_forest_max_depth: 14
+  xgboost_n_estimators: 300
+  xgboost_max_depth: 7
+  xgboost_learning_rate: 0.1
+
+# ── Isolation Forest anomaly detection (Phase 11) ──
+anomaly_detection:
+  contamination: 0.02   # assumed ~2% of trips are anomalous; revisited in Phase 11
+  random_state: 42
+
+# ── FastAPI service (Phase 14) ──
+api:
+  host: 0.0.0.0
+  port: 8000
