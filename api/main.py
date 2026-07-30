@@ -23,6 +23,9 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from api.schemas import ErrorResponse, HealthResponse, TripRequest, UnifiedPredictionResponse
+from api.routers import anomaly as anomaly_router
+from api.routers import demand as demand_router
+from api.routers import duration as duration_router
 from src.inference.errors import InferenceValidationError
 from src.inference.unified_pipeline import UnifiedTripPipeline
 from src.utils.config_loader import load_config
@@ -52,6 +55,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(duration_router.router)
+app.include_router(demand_router.router)
+app.include_router(anomaly_router.router)
 
 @app.exception_handler(InferenceValidationError)
 async def handle_inference_validation_error(
