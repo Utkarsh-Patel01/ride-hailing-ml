@@ -304,3 +304,175 @@ def plot_pickup_zones(
 
     fig.tight_layout()
     return _save_and_return(fig, save_path)
+
+
+
+
+
+
+
+
+
+
+def plot_model_comparison(
+    comparison_df: pd.DataFrame,
+    metric: str = "rmse",
+    title: str = "Model comparison",
+    save_path: Optional[Path] = None,
+) -> plt.Figure:
+    """
+    Horizontal bar chart ranking models by a chosen metric.
+
+    Business insight: this is the "which model do we actually ship"
+    chart - a comparison table's numbers are precise but a ranked bar
+    chart is what makes the gap between the winner and the runner-up
+    immediately legible, especially when deciding whether a more
+    complex model (e.g. the stacking ensemble) is worth its added
+    operational complexity over a simpler one.
+
+    Args:
+        comparison_df: Output of src.evaluation.metrics.compare_models,
+            indexed by model name.
+        metric: Column to rank by (must exist in comparison_df).
+        title: Chart title.
+        save_path: If provided, the figure is saved here as a PNG.
+
+    Returns:
+        The matplotlib Figure.
+
+    Raises:
+        PlottingError: If metric is not a column in comparison_df.
+    """
+    if metric not in comparison_df.columns:
+        raise PlottingError(
+            f"plot_model_comparison: '{metric}' not found in comparison_df columns "
+            f"{list(comparison_df.columns)}."
+        )
+
+    # Lower is better for every metric this project uses (mae, rmse,
+    # mape) except r2, where higher is better - sort direction has to
+    # match, or the "winner" wouldn't visually appear first.
+    ascending = metric != "r2"
+    ordered = comparison_df[metric].sort_values(ascending=ascending)
+
+    fig, ax = plt.subplots(figsize=(7, max(3, 0.6 * len(ordered))))
+    colors = ["#4DAF4A" if i == 0 else "#377EB8" for i in range(len(ordered))]
+    ax.barh(ordered.index, ordered.values, color=colors)
+    ax.set_xlabel(metric.upper())
+    ax.set_title(title)
+    ax.invert_yaxis()  # best model (first row) appears at the top
+
+    fig.tight_layout()
+    return _save_and_return(fig, save_path)
+
+
+def plot_predictions_vs_actual(
+    y_true: pd.Series,
+    y_pred: np.ndarray,
+    title: str = "Predicted vs actual",
+    units: str = "",
+    save_path: Optional[Path] = None,
+    sample_size: int = 50_000,
+    random_state: int = 42,
+) -> plt.Figure:
+    """
+    Scatter plot of predicted vs actual values, with a y=x reference
+    line marking perfect prediction.
+
+    Business insight: points clustering tightly along the diagonal
+    mean the model tracks reality closely across the whole range;
+    points that fan out or curve away from the diagonal at the high
+    or low end reveal exactly where the model struggles - e.g. a
+    duration model that's excellent for short trips but consistently
+    underpredicts long airport runs.
+
+    Args:
+        y_true: Ground-truth values.
+        y_pred: Model predictions, same length/order as y_true.
+        title: Chart title.
+        units: Appended to axis labels (e.g. 'seconds', 'pickups/hour').
+        save_path: If provided, the figure is saved here as a PNG.
+        sample_size: Points to sample before plotting - large test sets
+            render as an unreadable, slow-to-draw blob otherwise.
+        random_state: Seed for the sample, for reproducible figures.
+
+    Returns:
+        The matplotlib Figure.
+    """
+    y_true = pd.Series(np.asarray(y_true)).reset_index(drop=True)
+    y_pred = pd.Series(np.asarray(y_pred)).reset_index(drop=True)
+
+    if len(y_true) > sample_size:
+        sample_idx = y_true.sample(n=sample_size, random_state=random_state).index
+        y_true, y_pred = y_true.loc[sample_idx], y_pred.loc[sample_idx]
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.scatter(y_true, y_pred, s=4, alpha=0.15, color="#377EB8")
+
+    axis_min = min(y_true.min(), y_pred.min())
+    axis_max = max(y_true.max(), y_pred.max())
+    ax.plot([axis_min, axis_max], [axis_min, axis_max], color="#E41A1C", linewidth=1.5, linestyle="--")
+
+    label_suffix = f" ({units})" if units else ""
+    ax.set_xlabel(f"actual{label_suffix}")
+    ax.set_ylabel(f"predicted{label_suffix}")
+    ax.set_title(f"{title} (sample of {len(y_true):,})")
+    ax.set_aspect("equal")
+
+    fig.tight_layout()
+    return _save_and_return(fig, save_path)
+
+
+def plot_residuals(
+    y_true: pd.Series,
+    y_pred: np.ndarray,
+    title: str = "Residual plot",
+    units: str = "",
+    save_path: Optional[Path] = None,
+    sample_size: int = 50_000,
+    random_state: int = 42,
+) -> plt.Figure:
+    """
+    Plot residuals (actual - predicted) against predicted (fitted)
+    values, with a horizontal zero-reference line.
+
+    Business insight: a random scatter centered on zero, with no trend
+    across the x-axis, is what "no systematic bias" looks like. A
+    widening funnel shape reveals the model's error grows with the
+    size of its own prediction (heteroscedasticity) - relevant here
+    because it tells you whether to trust this model's confidence
+    equally for short and long trips (or low- and high-demand hours),
+    which a single aggregate RMSE number cannot show.
+
+    Args:
+        y_true: Ground-truth values.
+        y_pred: Model predictions, same length/order as y_true.
+        title: Chart title.
+        units: Appended to axis labels (e.g. 'seconds', 'pickups/hour').
+        save_path: If provided, the figure is saved here as a PNG.
+        sample_size: Points to sample before plotting (see
+            plot_predictions_vs_actual for why sampling matters here).
+        random_state: Seed for the sample, for reproducible figures.
+
+    Returns:
+        The matplotlib Figure.
+    """
+    y_true = pd.Series(np.asarray(y_true)).reset_index(drop=True)
+    y_pred = pd.Series(np.asarray(y_pred)).reset_index(drop=True)
+    residuals = y_true - y_pred
+
+    if len(y_pred) > sample_size:
+        sample_idx = y_pred.sample(n=sample_size, random_state=random_state).index
+        y_pred, residuals = y_pred.loc[sample_idx], residuals.loc[sample_idx]
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.scatter(y_pred, residuals, s=4, alpha=0.15, color="#984EA3")
+    ax.axhline(0, color="#E41A1C", linewidth=1.5, linestyle="--")
+
+    label_suffix = f" ({units})" if units else ""
+    ax.set_xlabel(f"predicted{label_suffix}")
+    ax.set_ylabel(f"residual = actual - predicted{label_suffix}")
+    ax.set_title(f"{title} (sample of {len(y_pred):,})")
+
+    fig.tight_layout()
+    return _save_and_return(fig, save_path)
