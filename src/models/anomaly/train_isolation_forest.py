@@ -202,7 +202,12 @@ def summarize_flagged_trips(df: pd.DataFrame, scores: pd.DataFrame) -> pd.DataFr
     return summary
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """
+    CLI training entry point. See scripts/train_anomaly_detector.py -
+    same __main__-pickling hazard as PickupZoneClusterer applies here
+    to TripAnomalyDetector.
+    """
     logging.basicConfig(level=logging.INFO)
 
     config = load_config()

@@ -166,7 +166,16 @@ def evaluate_k_range(
     return pd.DataFrame(results)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """
+    CLI training entry point.
+
+    Deliberately NOT guarded by `if __name__ == "__main__":` in this
+    file. Running this file directly (e.g. `python -m src.zones.kmeans_zones`)
+    would execute it as __main__, causing PickupZoneClusterer to be
+    pickled with an incorrect module reference - joblib.load() would
+    then fail from any other process. Run scripts/train_zones.py instead.
+    """
     from src.utils.config_loader import load_config, resolve_path
     from src.visualization.plots import plot_pickup_zones
 
